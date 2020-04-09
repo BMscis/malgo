@@ -4,22 +4,40 @@ import json
 import decimal
 import asyncio
 import warnings
+import multiprocessing
 import pandas as pd
 import MetaTrader5 as mt
 from datetime import datetime
+from malgometer import malgometer
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class malgogram:
-    def __init__(self, lot, type, base, volume, exchange_rate,new_exchange_rate, leverage, balance,target,swap,time_base):
-        mt.initialize()
-        self.volt = {"time":time_base,'base':base,'price_per_pip_change':None,
-            'ERD':None,'us_base':None, 'bid':None,'ask':None,'profit':None,
-            'swap':round(swap,3),'rate_of_currency_change':None}
-        self.fund = {"target":target,"target_rate":None}
-        self.exchange_rate = exchange_rate
-        self.new_exchange_rate = new_exchange_rate
-        self.volume = volume
-        self.type = type
+    def __init__(self, lot, type, base, volume, exchange_rate,new_exchange_rate, leverage, balance,target,swap,time_base=None):
+        self.volt = \
+        {
+            "time":time_base,
+            'base':base,
+            'price_per_pip_change':None,
+            'ERD':None,'us_base':None,
+            'bid':None,
+            'ask':None,
+            'profit':None,
+            'swap':round(swap,3),
+            'rate_of_currency_change':None
+        }
+        self.fund = \
+            {
+                "target":target,
+                "target_rate":None
+            }
+        self.value = \
+        {
+        "exchange_rate": exchange_rate,
+        "new_exchange_rate": new_exchange_rate,
+        "volume": volume,
+        "type": type
+        }
         self.set_lot(lot)
         self.set_expo()
         self.calculate_pip_value()
@@ -76,23 +94,6 @@ class malgogram:
                         self.volt['ask'] = 1.0
             except Exception as e:
                 print(self.volt['base'],self.volt['us_base'],e)
-        """
-        elif self.volt['base'][:3].lower() == "usd":
-            try:
-                self.volt['us_base'] = self.volt['base'][3:6].upper() + "USD"
-                get_rates = mt.copy_rates_from(self.volt['us_base'],
-                    mt.TIMEFRAME_M1,self.time,10)
-                if get_rates == None:
-                    self.volt['us_base'] = "USD" + self.volt['base'][3:6].upper()
-                    get_rates = mt.copy_rates_from(self.volt['us_base'],
-                        mt.TIMEFRAME_M1,self.time,10)
-                    if get_rates == None:
-                        self.volt['bid'] = 1.0
-                        self.volt['ask'] = 1.0
-            
-            except Exception as e:
-                print(self.volt['base'],self.volt['us_base'],e)
-            """
         get_currency = round(self.volt['ERD']\
             * self.volt['price_per_pip_change'],8)
         bare_currency = get_currency * pow(10, abs(self.exponent))
@@ -120,38 +121,7 @@ class malgogram:
             json.dump(data,ch)
             ch.write('\n')
 
-class malgometer:
-    def __init__(self,login,password,server):
-        self.credentials = {"login":login,"password":password,"server":server,"log":False}
-        asyncio.run(self.mt_log(self.credentials["login"],self.credentials["password"],self.credentials["server"]))
-    async def mt_init(self):
-        try:
-            if mt.initialize() == "true":
-                init  = "True"
-                print("Initialized!")
-            else:
-                init = mt.initialize()
-        except Exception as e:
-            print(e)
-        return init
-    async def login_(self,login,password,server):
-        try:
-            login_state = mt.login(login, password, server)
-        except Exception as e:
-            print(e)
-        return login_state
-    async def mt_log(self,login,password,server):
-        init = asyncio.create_task(self.mt_init())
-        await init
-        state = init._result
-        try:
-            if state == True:
-                log = asyncio.create_task(self.login_(login,password,server))
-                await log
-                if log._result == True:
-                    self.credentials["log"] = log._result
-                else:
-                    raise Exception(f"Trouble connection to {self.credentials['login']}")
-        except Exception as e:
-            print(e)
-        self.mt = mt
+"""
+if __name__ == "__main__":
+    malgo_init = multiprocessing.Process(name="malgometer", target=malgometer, args=(27093332,"8juvazuy","MetaQuotes-Demo"))
+    malgo_init.start()    """
